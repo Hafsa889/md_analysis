@@ -1,0 +1,4 @@
+MDAnalysis>=2.5.0
+numpy
+pandas
+matplotlib

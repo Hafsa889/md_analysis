@@ -1,0 +1,42 @@
+import MDAnalysis as mda
+from MDAnalysis.analysis import rms
+import matplotlib.pyplot as plt
+
+# Replicate inputs (use generic filenames; user edits locally)
+REPLICATES = [
+    {"name": "Replicate 1", "topology": "topology.gro", "trajectory": "rep1_aligned.xtc"},
+    {"name": "Replicate 2", "topology": "topology.gro", "trajectory": "rep2_aligned.xtc"},
+]
+
+ALIGN_SELECT = "name BB"  # works for CG; for all-atom use e.g. "protein and name CA"
+RMSD_SELECT = "name BB"
+
+all_rmsd = {}
+
+for rep in REPLICATES:
+    print(f"--- Processing {rep['name']} ---")
+    u = mda.Universe(rep["topology"], rep["trajectory"])
+    ref = mda.Universe(rep["topology"])
+
+    R = rms.RMSD(u, ref, select=ALIGN_SELECT, groupselections=[RMSD_SELECT])
+    R.run()
+    data = R.results.rmsd  # [frame, time(ps), RMSD(Å)]
+    all_rmsd[rep["name"]] = data
+    print(f"Finished {rep['name']}: {len(data)} frames")
+
+fig, ax = plt.subplots(figsize=(12, 7))
+
+for name, data in all_rmsd.items():
+    t_us = data[:, 1] / 1_000_000.0  # ps -> µs
+    ax.plot(t_us, data[:, 2], label=name, linewidth=1.5)
+
+for spine in ["bottom", "top", "left", "right"]:
+    ax.spines[spine].set_linewidth(2)
+plt.tick_params(axis="both", which="major", labelsize=14)
+ax.set_xlabel(r"Time ($\mu$s)", fontsize=16)
+ax.set_ylabel(r"RMSD ($\AA$)", fontsize=16)
+ax.legend(frameon=False)
+
+plt.tight_layout()
+plt.savefig("rmsd_replicates.png", dpi=300)
+print("Saved: rmsd_replicates.png")
